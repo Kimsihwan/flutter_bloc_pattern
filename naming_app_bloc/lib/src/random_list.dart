@@ -10,7 +10,6 @@ class RandomList extends StatefulWidget {
 
 class _RandomListState extends State<RandomList> {
   final List<KoreanWords> _suggestions = <KoreanWords>[];
-  final Set<String> _saved = Set<String>();
 
   @override
   Widget build(BuildContext context) {
@@ -29,10 +28,8 @@ class _RandomListState extends State<RandomList> {
         IconButton(
           icon: Icon(Icons.list),
           onPressed: () {
-            Navigator.of(context).push(MaterialPageRoute(
-                builder: (context) => SavedList(
-                      saved: _saved,
-                    )));
+            Navigator.of(context)
+                .push(MaterialPageRoute(builder: (context) => SavedList()));
           },
         )
       ],
@@ -40,20 +37,24 @@ class _RandomListState extends State<RandomList> {
   }
 
   Widget _buildList() {
-    return ListView.builder(itemBuilder: (context, index) {
-      if (index.isOdd) {
-        return Divider();
-      }
-      var realIndex = index ~/ 2;
-      if (realIndex >= _suggestions.length) {
-        _suggestions.addAll(generateKoreanWords().take(10));
-      }
-      return _buildRow(_suggestions[realIndex].myeongsa);
-    });
+    return StreamBuilder<Set<String>>(
+        stream: bloc.savedListStream,
+        builder: (context, snapshot) {
+          return ListView.builder(itemBuilder: (context, index) {
+            if (index.isOdd) {
+              return Divider();
+            }
+            var realIndex = index ~/ 2;
+            if (realIndex >= _suggestions.length) {
+              _suggestions.addAll(generateKoreanWords().take(10));
+            }
+            return _buildRow(snapshot.data, _suggestions[realIndex].myeongsa);
+          });
+        });
   }
 
-  Widget _buildRow(String word) {
-    final bool alreadySaved = _saved.contains(word);
+  Widget _buildRow(Set<String> saved, String word) {
+    final bool alreadySaved = saved == null ? false : saved.contains(word);
     return ListTile(
       title: Text(
         word,
@@ -64,12 +65,7 @@ class _RandomListState extends State<RandomList> {
         color: Colors.pink,
       ),
       onTap: () {
-        setState(() {
-          if (alreadySaved)
-            _saved.remove(word);
-          else
-            _saved.add(word);
-        });
+        bloc.addToOrRemoveFromSavedList(word);
       },
     );
   }
